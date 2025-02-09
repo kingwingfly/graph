@@ -20,6 +20,7 @@ impl Default for AppState {
             .expect("Data dir should be known")
             .join("graph project")
             .join("db_file.agdb");
+        // Todo: create a new db if not exists in release mode
         let mut db = DbImpl::new(&file.to_string_lossy()).unwrap_or_else(|_| {
             panic!("{:?} should be created", file);
         });
