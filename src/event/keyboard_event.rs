@@ -10,7 +10,7 @@ pub struct TextRefreshEvent {
 }
 
 impl Event for TextRefreshEvent {
-    type Traversal = &'static Parent;
+    type Traversal = &'static ChildOf;
     const AUTO_PROPAGATE: bool = true;
 }
 

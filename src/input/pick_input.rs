@@ -28,7 +28,7 @@ pub fn pick(
     quadtree: Res<MyQuadTree>,
     mut start: Local<Option<Vec2>>,
     mut cd: Local<PickCD>,
-) {
+) -> Result {
     if key.just_pressed(KeyCode::Escape) || input_state.target != Entity::PLACEHOLDER {
         *start = None;
         for e in pick_state.picked.drain() {
@@ -36,19 +36,19 @@ pub fn pick(
                 .entry::<Sprite>()
                 .and_modify(|mut s| s.color = Color::WHITE);
         }
-        return;
+        return Ok(());
     }
     if !btn.pressed(MouseButton::Left) || !pick_state.active {
         *start = None;
-        return;
+        return Ok(());
     }
-    let window = q_window.single();
+    let window = q_window.single()?;
     let Some(pos) = window.cursor_position() else {
-        return;
+        return Ok(());
     };
-    let (camera, camera_transform) = q_camera.single();
+    let (camera, camera_transform) = q_camera.single()?;
     let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, pos) else {
-        return;
+        return Ok(());
     };
     let cancel_pick = key.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
     match *start {
@@ -59,7 +59,7 @@ pub fn pick(
                 if cancel_pick { RED } else { WHITE },
             );
             if !cd.tick(time.delta()).just_finished() {
-                return;
+                return Ok(());
             }
             cd.reset();
             let res = if start.x > world_pos.x {
@@ -92,6 +92,7 @@ pub fn pick(
         }
         None => *start = Some(world_pos),
     }
+    Ok(())
 }
 
 pub fn delete_picked(
@@ -105,7 +106,7 @@ pub fn delete_picked(
     }
     if key.any_just_pressed([KeyCode::Backspace, KeyCode::Delete]) {
         for e in pick_state.picked.drain() {
-            cmds.entity(e).despawn_recursive();
+            cmds.entity(e).despawn();
         }
     }
 }

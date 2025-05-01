@@ -24,6 +24,7 @@ fn camera_setup(mut cmds: Commands) {
     cmds.spawn((
         Camera2d,
         Projection::from(OrthographicProjection::default_2d()),
+        SpritePickingCamera::default(),
         PrimaryCamera,
     ));
 }
@@ -32,11 +33,11 @@ fn camera_movement(
     mut q_camera: Query<&mut Transform, With<PrimaryCamera>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     text_input_state: Res<TextInputState>,
-) {
+) -> Result {
     if text_input_state.target != Entity::PLACEHOLDER {
-        return;
+        return Ok(());
     }
-    let mut camera = q_camera.single_mut();
+    let mut camera = q_camera.single_mut()?;
     if keyboard.any_pressed([KeyCode::ArrowLeft, KeyCode::KeyA]) {
         camera.translation.x -= MOVE_SPEED;
     } else if keyboard.any_pressed([KeyCode::ArrowRight, KeyCode::KeyD]) {
@@ -48,6 +49,7 @@ fn camera_movement(
     } else if keyboard.just_pressed(KeyCode::Space) {
         camera.translation = Vec3::ZERO;
     }
+    Ok(())
 }
 
 #[cfg(target_os = "macos")]
@@ -56,9 +58,9 @@ fn camera_scale(
     mut gesture_evr: EventReader<PinchGesture>,
     keyboard: Res<ButtonInput<KeyCode>>,
     text_input_state: Res<TextInputState>,
-) {
+) -> Result {
     let mut projection = q_projection.single_mut();
-    if let Projection::Orthographic(ref mut projection) = projection.as_mut() {
+    if let Projection::Orthographic(ref mut projection) = projection.as_mut()? {
         for ev in gesture_evr.read() {
             projection.scale = (projection.scale - ev.0).clamp(0.1, 5.);
         }
@@ -66,6 +68,7 @@ fn camera_scale(
             projection.scale = 1.;
         }
     };
+    Ok(())
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -74,9 +77,9 @@ fn camera_scale(
     mut mouse_wheel_evr: EventReader<MouseWheel>,
     keyboard: Res<ButtonInput<KeyCode>>,
     text_input_state: Res<TextInputState>,
-) {
-    let mut projection = q_projection.single_mut();
-    if let Projection::Orthographic(ref mut projection) = projection.as_mut() {
+) -> Result {
+    let mut projection = q_projection.single_mut()?;
+    if let Projection::Orthographic(projection) = projection.as_mut() {
         for ev in mouse_wheel_evr.read() {
             projection.scale = (projection.scale - ev.y).clamp(0.1, 5.);
         }
@@ -84,4 +87,5 @@ fn camera_scale(
             projection.scale = 1.;
         }
     };
+    Ok(())
 }

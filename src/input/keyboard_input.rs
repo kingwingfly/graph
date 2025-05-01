@@ -1,8 +1,8 @@
 use crate::{event::TextRefreshEvent, state::TextInputState};
 use bevy::{
     input::{
-        keyboard::{Key, KeyboardInput},
         ButtonState,
+        keyboard::{Key, KeyboardInput},
     },
     prelude::*,
 };
@@ -29,7 +29,7 @@ pub fn ime_toggle(
     }
     if *possiable && btns.just_released(KeyCode::ShiftLeft) {
         if text_input_state.ime_buf.is_empty() {
-            let mut window = q_window.single_mut();
+            let mut window = q_window.single_mut().unwrap();
             window.ime_enabled = !window.ime_enabled;
         }
         *possiable = false;

@@ -25,7 +25,7 @@ fn node_create(
     asset_server: Res<AssetServer>,
     mut text_input_state: ResMut<TextInputState>,
     mut q_window: Query<&mut Window>,
-) {
+) -> Result {
     for ev in evr_double_click.read() {
         // text input target change
         if text_input_state.target != Entity::PLACEHOLDER {
@@ -36,9 +36,9 @@ fn node_create(
             );
             text_input_state.reset();
         }
-        let mut window = q_window.single_mut();
+        let mut window = q_window.single_mut()?;
         let Some(window_pos) = window.cursor_position() else {
-            return;
+            return Ok(());
         };
         window.ime_position = window_pos;
         cmds.spawn((
@@ -47,6 +47,7 @@ fn node_create(
                 custom_size: Some(CUSTOM_SIZE),
                 ..Default::default()
             },
+            Pickable::default(),
             CollisionRect::from(Rect::from_center_size(ev.world_pos, CUSTOM_SIZE)),
             Transform::from_xyz(ev.world_pos.x, ev.world_pos.y, 1.),
         ))
@@ -57,13 +58,14 @@ fn node_create(
              mut pick_state: ResMut<PickState>| {
                 if trigger.button == PointerButton::Primary {
                     pick_state.active = false;
-                    if let Projection::Orthographic(projection) = q_projection.single() {
-                        if let Ok(mut transform) = q_sprite.get_mut(trigger.entity()) {
+                    if let Projection::Orthographic(projection) = q_projection.single()? {
+                        if let Ok(mut transform) = q_sprite.get_mut(trigger.target()) {
                             transform.translation.x += trigger.event().delta.x * projection.scale;
                             transform.translation.y -= trigger.event().delta.y * projection.scale;
                         }
                     };
                 }
+                Ok(())
             },
         )
         .observe(
@@ -74,34 +76,36 @@ fn node_create(
              text_input_state: ResMut<TextInputState>,
              mut double_click_state: Local<DoubleClickState>| {
                 if double_click_state.click(Some(trigger.button)) == Some(PointerButton::Primary) {
-                    if let Ok(children) = q_children.get(trigger.entity()) {
+                    if let Ok(children) = q_children.get(trigger.target()) {
                         for &e in children {
                             if q_text.contains(e) {
                                 if e == text_input_state.target {
-                                    return;
+                                    return Ok(());
                                 }
                                 cmds.trigger_targets(EditEvent, e);
-                                return;
+                                return Ok(());
                             }
                         }
                     }
                 }
+                Ok(())
             },
         )
         .observe(
             |trigger: Trigger<TextRefreshEvent>,
              mut q_box: Query<&mut Sprite>,
              mut q_window: Query<&mut Window>| {
-                let mut window = q_window.single_mut();
+                let mut window = q_window.single_mut()?;
                 let Some(window_pos) = window.cursor_position() else {
-                    return;
+                    return Ok(());
                 };
-                if let Ok(mut s) = q_box.get_mut(trigger.entity()) {
+                if let Ok(mut s) = q_box.get_mut(trigger.target()) {
                     let ev = trigger.event();
                     let delta = Vec2::new(ev.width * FONT_WIDTH, (ev.height - 1.) * FONT_HEIGHT);
                     s.custom_size = Some(CUSTOM_SIZE + delta);
                     window.ime_position = window_pos + delta;
                 }
+                Ok(())
             },
         )
         .with_children(|p| {
@@ -120,7 +124,7 @@ fn node_create(
                 .observe(
                     |trigger: Trigger<TextRefreshEvent>, mut q_text: Query<&mut Text2d>| {
                         let ev = trigger.event();
-                        if let Ok(mut t) = q_text.get_mut(trigger.entity()) {
+                        if let Ok(mut t) = q_text.get_mut(trigger.target()) {
                             t.0 = ev.text.clone();
                         }
                     },
@@ -130,7 +134,7 @@ fn node_create(
                      mut cmds: Commands,
                      q_text: Query<&Text2d>,
                      mut text_input_state: ResMut<TextInputState>| {
-                        if let Ok(t) = q_text.get(trigger.entity()) {
+                        if let Ok(t) = q_text.get(trigger.target()) {
                             text_input_state.submit();
                             cmds.trigger_targets(
                                 TextRefreshEvent::from(&*text_input_state),
@@ -139,7 +143,7 @@ fn node_create(
                             text_input_state.reset();
                             text_input_state.input_buf =
                                 t.0.split("\n").map(|line| line.chars().collect()).collect();
-                            text_input_state.target = trigger.entity();
+                            text_input_state.target = trigger.target();
                             cmds.trigger_targets(
                                 TextRefreshEvent::from(&*text_input_state),
                                 text_input_state.target,
@@ -150,4 +154,5 @@ fn node_create(
                 .id();
         });
     }
+    Ok(())
 }

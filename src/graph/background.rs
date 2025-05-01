@@ -24,6 +24,7 @@ fn setup_background(mut cmds: Commands) {
             custom_size: Some(BACKGROUND_SIZE),
             ..Default::default()
         },
+        Pickable::default(),
         Transform::from_xyz(0., 0., 0.),
     ))
     .observe(
@@ -32,7 +33,7 @@ fn setup_background(mut cmds: Commands) {
          mut pick_state: ResMut<PickState>| {
             match trigger.button {
                 PointerButton::Secondary => {
-                    let (mut transform, projection) = q_camera.single_mut();
+                    let (mut transform, projection) = q_camera.single_mut()?;
                     if let Projection::Orthographic(projection) = projection {
                         transform.translation.x -= trigger.delta.x * projection.scale;
                         transform.translation.y += trigger.delta.y * projection.scale;
@@ -43,6 +44,7 @@ fn setup_background(mut cmds: Commands) {
                 }
                 _ => {}
             }
+            Ok(())
         },
     )
     .observe(
@@ -52,17 +54,18 @@ fn setup_background(mut cmds: Commands) {
          q_camera: Query<(&Camera, &GlobalTransform), With<PrimaryCamera>>,
          mut double_click_state: Local<DoubleClickState>| {
             if double_click_state.click(Some(trigger.button)) == Some(PointerButton::Primary) {
-                let window = q_window.single_mut();
-                let (camera, camera_transform) = q_camera.single();
+                let window = q_window.single_mut()?;
+                let (camera, camera_transform) = q_camera.single()?;
                 let Some(window_pos) = window.cursor_position() else {
-                    return;
+                    return Ok(());
                 };
                 let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, window_pos)
                 else {
-                    return;
+                    return Ok(());
                 };
-                evw_double_click.send(CreateNodeEvent { world_pos });
+                evw_double_click.write(CreateNodeEvent { world_pos });
             }
+            Ok(())
         },
     );
 }
