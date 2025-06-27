@@ -59,8 +59,8 @@ fn camera_scale(
     keyboard: Res<ButtonInput<KeyCode>>,
     text_input_state: Res<TextInputState>,
 ) -> Result {
-    let mut projection = q_projection.single_mut();
-    if let Projection::Orthographic(ref mut projection) = projection.as_mut()? {
+    let mut projection = q_projection.single_mut()?;
+    if let Projection::Orthographic(projection) = projection.as_mut() {
         for ev in gesture_evr.read() {
             projection.scale = (projection.scale - ev.0).clamp(0.1, 5.);
         }
